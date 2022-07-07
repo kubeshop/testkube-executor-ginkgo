@@ -11,7 +11,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("runner should run test based on execution data", func(t *testing.T) {
 		// given
-		runner := NewRunner()
+		runner, err := NewGinkgoRunner()
 		execution := testkube.NewQueuedExecution()
 		execution.Content = testkube.NewStringTestContent("hello I'm test content")
 
