@@ -16,7 +16,7 @@ import (
 )
 
 var ginkgoDefaultParams = InitializeGinkgoParams(make(map[string]string))
-var ginkgoBin = "/bin/ginkgo"
+var ginkgoBin = "ginkgo"
 
 type Params struct {
 	GitUsername string `required:"true"` // RUNNER_GITUSERNAME
@@ -65,7 +65,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 	output.PrintEvent("created content path", path)
-	lsout, err := executor.Run(path, "ls", "-lah")
+	lsout, err := executor.Run(path, "ls")
 	if err == nil {
 		fmt.Println(lsout)
 	}
@@ -76,9 +76,9 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// Set up ginkgo command and potential args
-	ginkgoParams, leftoverVars := FindGinkgoParams(&execution, ginkgoDefaultParams)
+	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
 	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
-	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(leftoverVars)
+	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution.Variables)
 	ginkgoArgsAndFlags := ginkgoArgs + " " + ginkgoPassThroughFlags
 	_, err = os.Stat(filepath.Join(path, "vendor"))
 	vendorParam := ""
@@ -130,21 +130,21 @@ func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
 }
 
 // Find any GinkgoParams in execution.Variables
-func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]string) (map[string]string, map[string]testkube.Variable) {
+func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]string) map[string]string {
 	vars := execution.Variables
 	var retVal = make(map[string]string)
 	for k, p := range defaultParams {
 		v, found := vars[k]
 		if found {
 			retVal[k] = v.Value
-			delete(execution.Variables, p)
+			delete(execution.Variables, k)
 		} else {
 			retVal[k] = p
 		}
 	}
 	output.PrintEvent("matched up Ginkgo param defaults with those provided")
 	output.PrintEvent("execution.Variables:", execution.Variables)
-	return retVal, execution.Variables
+	return retVal
 }
 
 func BuildGinkgoArgs(params map[string]string) string {
@@ -166,12 +166,15 @@ func BuildGinkgoArgs(params map[string]string) string {
 // acts on the "left over" Variables that are to be treated as pass through
 // flags to GInkgo
 func BuildGinkgoPassThroughFlags(vars testkube.Variables) string {
-	flags := []string{"--"}
+	flags := []string{}
 	for _, v := range vars {
 		flag := "--" + v.Name + "=" + v.Value
 		flags = append(flags, flag)
 	}
 	retVal := strings.Join(flags, " ")
+	if retVal != "" {
+		retVal = "-- " + retVal
+	}
 	output.PrintEvent("created ginkgo pass through flags string", retVal)
 	return retVal
 }
