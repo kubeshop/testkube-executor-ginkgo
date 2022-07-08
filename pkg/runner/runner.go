@@ -65,38 +65,34 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 	output.PrintEvent("created content path", path)
+	lsout, err := executor.Run(path, "ls", "-lah")
+	if err == nil {
+		fmt.Println(lsout)
+	}
 
-	_, err = executor.Run(path, "ginkgo version")
+	_, err = executor.Run(path, "ginkgo", "version")
 	if err != nil {
 		return result, fmt.Errorf("ginkgo binary not found?: %w", err)
 	}
 
 	// Set up ginkgo command and potential args
-
-	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
+	ginkgoParams, leftoverVars := FindGinkgoParams(&execution, ginkgoDefaultParams)
 	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
+	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(leftoverVars)
+	ginkgoArgsAndFlags := ginkgoArgs + " " + ginkgoPassThroughFlags
 	_, err = os.Stat(filepath.Join(path, "vendor"))
 	vendorParam := ""
-	if err != nil {
+	if err == nil {
 		output.PrintEvent("found vendor dir, no need to install go modules")
 		vendorParam = "--mod vendor"
 		ginkgoArgs = vendorParam + " " + ginkgoArgs
-		output.PrintEvent("Added mod vendor to args", ginkgoArgs)
 	}
-	ginkgoCmd := ginkgoBin + " " + ginkgoArgs
 
-	envVars := make([]string, 0, len(execution.Variables))
-	for _, value := range execution.Variables {
-		envVars = append(envVars, fmt.Sprintf("%s=%s", value.Name, value.Value))
-	}
-	envVarsString := strings.Join(envVars, " ")
-	output.PrintEvent("created envVars string", envVarsString)
-
-	ginkgoCmdWithEnvs := fmt.Sprintf("%s %s", envVarsString, ginkgoCmd)
-	output.PrintEvent("created final ginkgo command string", ginkgoCmdWithEnvs)
+	fmt.Println("ginkgo bin:", ginkgoBin)
+	fmt.Println("args and pass through flags:", ginkgoArgsAndFlags)
 
 	// run executor here
-	out, err := executor.Run(path, ginkgoCmdWithEnvs)
+	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags)
 	suites, serr := junit.IngestFile(ginkgoParams["GinkgoJunitReport"])
 	result = MapJunitToExecutionResults(out, suites)
 
@@ -129,12 +125,12 @@ func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
 	ginkgoParams["GinkgoJsonReport"] = "--json-report=report.json"  // --json-report=report.json
 	ginkgoParams["GinkgoJunitReport"] = "--junit-report=report.xml" // --junit-report=report.xml
 	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report=report.teamcity
-	output.PrintEvent("Initialized Ginkgo Parameters", ginkgoParams)
+	output.PrintEvent("Initialized Ginkgo Parameters")
 	return ginkgoParams
 }
 
 // Find any GinkgoParams in execution.Variables
-func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]string) map[string]string {
+func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]string) (map[string]string, map[string]testkube.Variable) {
 	vars := execution.Variables
 	var retVal = make(map[string]string)
 	for k, p := range defaultParams {
@@ -146,8 +142,9 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 			retVal[k] = p
 		}
 	}
-	output.PrintEvent("matched up Ginkgo param defaults with those provided", retVal)
-	return retVal
+	output.PrintEvent("matched up Ginkgo param defaults with those provided")
+	output.PrintEvent("execution.Variables:", execution.Variables)
+	return retVal, execution.Variables
 }
 
 func BuildGinkgoArgs(params map[string]string) string {
@@ -161,7 +158,21 @@ func BuildGinkgoArgs(params map[string]string) string {
 	retVal := strings.Join(args, " ")
 	pattern := regexp.MustCompile(`\s+`)
 	retVal = pattern.ReplaceAllString(retVal, " ")
-	output.PrintEvent("created ginkgo args string", retVal)
+	output.PrintEvent("created ginkgo args string")
+	return retVal
+}
+
+// This should always be called after FindGinkgoParams so that it only
+// acts on the "left over" Variables that are to be treated as pass through
+// flags to GInkgo
+func BuildGinkgoPassThroughFlags(vars testkube.Variables) string {
+	flags := []string{"--"}
+	for _, v := range vars {
+		flag := "--" + v.Name + "=" + v.Value
+		flags = append(flags, flag)
+	}
+	retVal := strings.Join(flags, " ")
+	output.PrintEvent("created ginkgo pass through flags string", retVal)
 	return retVal
 }
 
