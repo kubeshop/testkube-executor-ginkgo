@@ -10,8 +10,9 @@ RUN go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo
 RUN cp `which ginkgo` ginkgo
 
 FROM golang:1.18-alpine
+RUN apk update;
+RUN apk --no-cache add gcc musl-dev gcompat
 RUN apk --no-cache add ca-certificates git
-RUN apk add --update bash curl
 WORKDIR /root/
 COPY --from=0 /runner /bin/runner
 COPY --from=0 /build/ginkgo /bin/ginkgo

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	junit "github.com/joshdk/go-junit"
 	"github.com/kelseyhightower/envconfig"
@@ -64,35 +62,33 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	if err != nil {
 		return result, err
 	}
-	output.PrintEvent("created content path", path)
-	lsout, err := executor.Run(path, "ls")
-	if err == nil {
-		fmt.Println(lsout)
-	}
-
-	_, err = executor.Run(path, "ginkgo", "version")
-	if err != nil {
-		return result, fmt.Errorf("ginkgo binary not found?: %w", err)
-	}
 
 	// Set up ginkgo command and potential args
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
 	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
 	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution.Variables)
-	ginkgoArgsAndFlags := ginkgoArgs + " " + ginkgoPassThroughFlags
+	ginkgoArgsAndFlags := append(ginkgoArgs, ginkgoPassThroughFlags...)
+
 	_, err = os.Stat(filepath.Join(path, "vendor"))
 	vendorParam := ""
 	if err == nil {
 		output.PrintEvent("found vendor dir, no need to install go modules")
-		vendorParam = "--mod vendor"
-		ginkgoArgs = vendorParam + " " + ginkgoArgs
+		vendorParam = " --mod vendor"
+		ginkgoArgsAndFlags = append([]string{vendorParam}, ginkgoArgsAndFlags...)
 	}
 
-	fmt.Println("ginkgo bin:", ginkgoBin)
-	fmt.Println("args and pass through flags:", ginkgoArgsAndFlags)
+	output.PrintEvent("Args and Flags Count:", len(ginkgoArgsAndFlags))
+	output.PrintEvent("Args and Flags:", ginkgoArgsAndFlags)
 
 	// run executor here
-	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags)
+	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
+
+	lsout, err := executor.Run(path, "ls")
+	if err == nil {
+		output.PrintEvent("ls on dir post run: ", lsout)
+	}
+
+	// generate report/result
 	suites, serr := junit.IngestFile(ginkgoParams["GinkgoJunitReport"])
 	result = MapJunitToExecutionResults(out, suites)
 
@@ -100,7 +96,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 }
 
 func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
-	ginkgoParams["GinkgoTestPackage"] = "."
+	ginkgoParams["GinkgoTestPackage"] = ""
 	ginkgoParams["GinkgoRecursive"] = "-r"                          // -r
 	ginkgoParams["GinkgoParallel"] = "-p"                           // -p
 	ginkgoParams["GinkgoParallelProcs"] = ""                        // --procs=N
@@ -125,7 +121,7 @@ func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
 	ginkgoParams["GinkgoJsonReport"] = "--json-report=report.json"  // --json-report=report.json
 	ginkgoParams["GinkgoJunitReport"] = "--junit-report=report.xml" // --junit-report=report.xml
 	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report=report.teamcity
-	output.PrintEvent("Initialized Ginkgo Parameters")
+	output.PrintEvent("Initialized Ginkgo Parameters. Count:", len(ginkgoParams))
 	return ginkgoParams
 }
 
@@ -136,10 +132,13 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 	for k, p := range defaultParams {
 		v, found := vars[k]
 		if found {
+			output.PrintEvent(fmt.Sprintf("Found a default param in vars [%s], using new value:", k), v.Value)
 			retVal[k] = v.Value
 			delete(execution.Variables, k)
 		} else {
-			retVal[k] = p
+			if p != "" {
+				retVal[k] = p
+			}
 		}
 	}
 	output.PrintEvent("matched up Ginkgo param defaults with those provided")
@@ -147,36 +146,35 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 	return retVal
 }
 
-func BuildGinkgoArgs(params map[string]string) string {
+func BuildGinkgoArgs(params map[string]string) []string {
 	args := []string{}
 	for k, p := range params {
 		if k != "GinkgoTestPackage" {
 			args = append(args, p)
 		}
 	}
-	args = append(args, params["GinkgoTestPackage"])
-	retVal := strings.Join(args, " ")
-	pattern := regexp.MustCompile(`\s+`)
-	retVal = pattern.ReplaceAllString(retVal, " ")
-	output.PrintEvent("created ginkgo args string")
-	return retVal
+	if params["GinkgoTestPackage"] != "" {
+		args = append(args, params["GinkgoTestPackage"])
+	}
+	output.PrintEvent("created ginkgo args slice")
+	return args
 }
 
 // This should always be called after FindGinkgoParams so that it only
 // acts on the "left over" Variables that are to be treated as pass through
 // flags to GInkgo
-func BuildGinkgoPassThroughFlags(vars testkube.Variables) string {
+func BuildGinkgoPassThroughFlags(vars testkube.Variables) []string {
 	flags := []string{}
 	for _, v := range vars {
 		flag := "--" + v.Name + "=" + v.Value
 		flags = append(flags, flag)
 	}
-	retVal := strings.Join(flags, " ")
-	if retVal != "" {
-		retVal = "-- " + retVal
+
+	if len(flags) > 0 {
+		flags = append([]string{"--"}, flags...)
 	}
-	output.PrintEvent("created ginkgo pass through flags string", retVal)
-	return retVal
+
+	return flags
 }
 
 // Validate checks if Execution has valid data in context of Cypress executor
