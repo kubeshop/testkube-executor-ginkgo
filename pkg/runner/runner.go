@@ -73,7 +73,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	_, err = os.Stat(filepath.Join(path, "vendor"))
 	if err == nil {
 		output.PrintEvent("found vendor dir, no need to install go modules")
-		ginkgoArgsAndFlags = append([]string{" --mod", "vendor"}, ginkgoArgsAndFlags...)
+		// ginkgoArgsAndFlags = append([]string{" --mod", "vendor", "-v"}, ginkgoArgsAndFlags...)
 	}
 
 	output.PrintEvent("Args and Flags Count:", len(ginkgoArgsAndFlags))
@@ -89,8 +89,22 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		fmt.Println("--------------------------------")
 	}
 
+	lsout, err = executor.Run(path, "ls", "other")
+	if err == nil {
+		fmt.Println("--------------ls----------------")
+		output.PrintEvent("ls on other/ post run: ", string(lsout))
+		fmt.Println("--------------------------------")
+	}
+
+	lsout, err = executor.Run(path, "ls", "/tmp/")
+	if err == nil {
+		fmt.Println("--------------ls----------------")
+		output.PrintEvent("ls on /tmp/ post run: ", string(lsout))
+		fmt.Println("--------------------------------")
+	}
+
 	// generate report/result
-	suites, serr := junit.IngestFile(ginkgoParams["GinkgoJunitReport"])
+	suites, serr := junit.IngestFile(path + strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
 	result = MapJunitToExecutionResults(out, suites)
 
 	return result.WithErrors(err, serr), nil
@@ -113,13 +127,13 @@ func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
 	ginkgoParams["GinkgoTimeout"] = ""                              // --timeout=duration
 	ginkgoParams["GinkgoSkipPackage"] = ""                          // --skip-package list,of,packages
 	ginkgoParams["GinkgoFailFast"] = ""                             // --fail-fast
-	ginkgoParams["GinkgoKeepGoing"] = "--keep-going"                // --keep-going
+	ginkgoParams["GinkgoKeepGoing"] = ""                            // --keep-going
 	ginkgoParams["GinkgoFailOnPending"] = ""                        // --fail-on-pending
 	ginkgoParams["GinkgoCover"] = ""                                // --cover
 	ginkgoParams["GinkgoCoverProfile"] = ""                         // --coverprofile cover.profile
 	ginkgoParams["GinkgoRace"] = ""                                 // --race
 	ginkgoParams["GinkgoTrace"] = "--trace"                         // --trace
-	ginkgoParams["GinkgoJsonReport"] = "--json-report report.json"  // --json-report report.json
+	ginkgoParams["GinkgoJsonReport"] = ""                           // --json-report report.json
 	ginkgoParams["GinkgoJunitReport"] = "--junit-report report.xml" // --junit-report report.xml
 	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report report.teamcity
 	output.PrintEvent("Initialized Ginkgo Parameters. Count:", len(ginkgoParams))
@@ -206,8 +220,11 @@ func MapJunitToExecutionResults(out []byte, suites []junit.Suite) (result testku
 	result.OutputType = "text/plain"
 
 	for _, suite := range suites {
+		output.PrintEvent("Parsing Suite:", suite.Name)
 		for _, test := range suite.Tests {
-
+			output.PrintEvent("Parsing Test  :", test.Name)
+			output.PrintEvent("----->Duration:", test.Duration)
+			output.PrintEvent("----->Status  :", test.Status)
 			result.Steps = append(
 				result.Steps,
 				testkube.ExecutionStepResult{
@@ -229,6 +246,7 @@ func MapStatus(in junit.Status) (out string) {
 	case "passed":
 		return string(testkube.PASSED_ExecutionStatus)
 	default:
+		output.PrintEvent("----->FAILED<-----")
 		return string(testkube.FAILED_ExecutionStatus)
 	}
 }
