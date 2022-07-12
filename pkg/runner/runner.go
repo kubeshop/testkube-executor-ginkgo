@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	junit "github.com/joshdk/go-junit"
 	"github.com/kelseyhightower/envconfig"
@@ -70,11 +71,9 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	ginkgoArgsAndFlags := append(ginkgoArgs, ginkgoPassThroughFlags...)
 
 	_, err = os.Stat(filepath.Join(path, "vendor"))
-	vendorParam := ""
 	if err == nil {
 		output.PrintEvent("found vendor dir, no need to install go modules")
-		vendorParam = " --mod vendor"
-		ginkgoArgsAndFlags = append([]string{vendorParam}, ginkgoArgsAndFlags...)
+		ginkgoArgsAndFlags = append([]string{" --mod", "vendor"}, ginkgoArgsAndFlags...)
 	}
 
 	output.PrintEvent("Args and Flags Count:", len(ginkgoArgsAndFlags))
@@ -85,7 +84,9 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	lsout, err := executor.Run(path, "ls")
 	if err == nil {
-		output.PrintEvent("ls on dir post run: ", lsout)
+		fmt.Println("--------------ls----------------")
+		output.PrintEvent("ls on dir post run: ", string(lsout))
+		fmt.Println("--------------------------------")
 	}
 
 	// generate report/result
@@ -99,28 +100,28 @@ func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
 	ginkgoParams["GinkgoTestPackage"] = ""
 	ginkgoParams["GinkgoRecursive"] = "-r"                          // -r
 	ginkgoParams["GinkgoParallel"] = "-p"                           // -p
-	ginkgoParams["GinkgoParallelProcs"] = ""                        // --procs=N
-	ginkgoParams["GinkgoCompilers"] = ""                            // --compilers=N
+	ginkgoParams["GinkgoParallelProcs"] = ""                        // --procs N
+	ginkgoParams["GinkgoCompilers"] = ""                            // --compilers N
 	ginkgoParams["GinkgoRandomize"] = "--randomize-all"             // --randomize-all
 	ginkgoParams["GinkgoRandomizeSuites"] = "--randomize-suites"    // --randomize-suites
-	ginkgoParams["GinkgoLabelFilter"] = ""                          // --label-filter=QUERY
-	ginkgoParams["GinkgoFocusFilter"] = ""                          // --focus=REGEXP
-	ginkgoParams["GinkgoSkipFilter"] = ""                           // --skip=REGEXP
+	ginkgoParams["GinkgoLabelFilter"] = ""                          // --label-filter QUERY
+	ginkgoParams["GinkgoFocusFilter"] = ""                          // --focus REGEXP
+	ginkgoParams["GinkgoSkipFilter"] = ""                           // --skip REGEXP
 	ginkgoParams["GinkgoUntilItFails"] = ""                         // --until-it-fails
-	ginkgoParams["GinkgoRepeat"] = ""                               // --repeat=N
-	ginkgoParams["GinkgoFlakeAttempts"] = ""                        // --flake-attempts=N
+	ginkgoParams["GinkgoRepeat"] = ""                               // --repeat N
+	ginkgoParams["GinkgoFlakeAttempts"] = ""                        // --flake-attempts N
 	ginkgoParams["GinkgoTimeout"] = ""                              // --timeout=duration
-	ginkgoParams["GinkgoSkipPackage"] = ""                          // --skip-package=list,of,packages
+	ginkgoParams["GinkgoSkipPackage"] = ""                          // --skip-package list,of,packages
 	ginkgoParams["GinkgoFailFast"] = ""                             // --fail-fast
 	ginkgoParams["GinkgoKeepGoing"] = "--keep-going"                // --keep-going
 	ginkgoParams["GinkgoFailOnPending"] = ""                        // --fail-on-pending
 	ginkgoParams["GinkgoCover"] = ""                                // --cover
-	ginkgoParams["GinkgoCoverProfile"] = ""                         // --coverprofile=cover.profile
+	ginkgoParams["GinkgoCoverProfile"] = ""                         // --coverprofile cover.profile
 	ginkgoParams["GinkgoRace"] = ""                                 // --race
 	ginkgoParams["GinkgoTrace"] = "--trace"                         // --trace
-	ginkgoParams["GinkgoJsonReport"] = "--json-report=report.json"  // --json-report=report.json
-	ginkgoParams["GinkgoJunitReport"] = "--junit-report=report.xml" // --junit-report=report.xml
-	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report=report.teamcity
+	ginkgoParams["GinkgoJsonReport"] = "--json-report report.json"  // --json-report report.json
+	ginkgoParams["GinkgoJunitReport"] = "--junit-report report.xml" // --junit-report report.xml
+	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report report.teamcity
 	output.PrintEvent("Initialized Ginkgo Parameters. Count:", len(ginkgoParams))
 	return ginkgoParams
 }
@@ -150,7 +151,7 @@ func BuildGinkgoArgs(params map[string]string) []string {
 	args := []string{}
 	for k, p := range params {
 		if k != "GinkgoTestPackage" {
-			args = append(args, p)
+			args = append(args, strings.Split(p, " ")...)
 		}
 	}
 	if params["GinkgoTestPackage"] != "" {
