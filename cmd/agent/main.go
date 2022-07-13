@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kubeshop/testkube-executor-template/pkg/runner"
+	"github.com/kubeshop/testkube-executor-ginkgo/pkg/runner"
 	"github.com/kubeshop/testkube/pkg/executor/agent"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 )

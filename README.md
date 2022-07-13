@@ -17,7 +17,7 @@ Please follow the main [TestKube repository](https://github.com/kubeshop/testkub
 ## Implemention in several steps:
 
 1. Create new repo on top of this template 
-2. Change `go.mod` file with your path (just replace `github.com/kubeshop/testkube-executor-template` project-wise with your package path) 
+2. Change `go.mod` file with your path (just replace `github.com/kubeshop/testkube-executor-ginkgo` project-wise with your package path) 
 3. Implement your own Runner on top of [runner interface](https://github.com/kubeshop/testkube/blob/main/pkg/runner/interface.go
 4. Change Dockerfile - use base image of whatever test framework/library you want to use
 5. Build and push dockerfile to some repository
@@ -31,7 +31,7 @@ metadata:
   namespace: testkube
 spec:
   executor_type: job
-  image: kubeshop/testkube-template-executor:0.0.1
+  image: kubeshop/testkube-ginkgo-executor:0.0.1
   types:
   - example/test
 ```

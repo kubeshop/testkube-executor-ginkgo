@@ -2,8 +2,6 @@ package runner
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	junit "github.com/joshdk/go-junit"
@@ -37,7 +35,6 @@ func NewGinkgoRunner() (*GinkgoRunner, error) {
 	return runner, nil
 }
 
-// ExampleRunner for template - change me to some valid runner
 type GinkgoRunner struct {
 	Params  Params
 	Fetcher content.ContentFetcher
@@ -69,12 +66,6 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
 	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution)
 	ginkgoArgsAndFlags := append(ginkgoArgs, ginkgoPassThroughFlags...)
-
-	_, err = os.Stat(filepath.Join(path, "vendor"))
-	if err == nil {
-		output.PrintEvent("found vendor dir, use --mod vendor")
-		ginkgoArgsAndFlags = append([]string{" --mod", "vendor"}, ginkgoArgsAndFlags...)
-	}
 
 	// run executor here
 	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
