@@ -2,7 +2,7 @@
                                                            
 # Welcome to the Testkube Ginkgo Executor
 
-Kubetest Ginkgo Executor is test executor for [testkube](https://testkube.io)
+The Kubetest Ginkgo Executor is a test executor for [testkube](https://testkube.io).
 
 # Issues and enchancements 
 
