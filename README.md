@@ -6,7 +6,7 @@ The Kubetest Ginkgo Executor is a test executor for [testkube](https://testkube.
 
 # Issues and enchancements 
 
-Please follow to main testkube repository for reporting any [issues](https://github.com/kubeshop/testkube/issues) or [discussions](https://github.com/kubeshop/testkube/discussions)
+Please visit the main Testkube repository for reporting any [issues](https://github.com/kubeshop/testkube/issues) or [discussions](https://github.com/kubeshop/testkube/discussions).
 
 ## Details 
 
