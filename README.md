@@ -58,4 +58,4 @@ Add `--args '--base-url=example.com --some-arg=value'` to `kubectl testkuve run 
 
 ## API 
 
-Cypress executor implements [testkube OpenAPI for executors](https://kubeshop.github.io/testkube/openapi/#operations-tag-executor) (look at executor tag)
+Cypress executor implements [testkube OpenAPI for executors](https://kubeshop.github.io/testkube/openapi/#operations-tag-executor) (look at executor tag).
