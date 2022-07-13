@@ -1,6 +1,6 @@
 ![Testkube Logo](https://raw.githubusercontent.com/kubeshop/testkube/main/assets/testkube-color-gray.png)
                                                            
-# Welcome to testkube Ginkgo Executor
+# Welcome to the Testkube Ginkgo Executor
 
 Kubetest Ginkgo Executor is test executor for [testkube](https://testkube.io)
 
