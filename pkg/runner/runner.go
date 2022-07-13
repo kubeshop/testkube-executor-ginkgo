@@ -14,7 +14,7 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor/output"
 )
 
-var ginkgoDefaultParams = InitializeGinkgoParams(make(map[string]string))
+var ginkgoDefaultParams = InitializeGinkgoParams()
 var ginkgoBin = "ginkgo"
 
 type Params struct {
@@ -72,36 +72,12 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	_, err = os.Stat(filepath.Join(path, "vendor"))
 	if err == nil {
-		output.PrintEvent("found vendor dir, no need to install go modules")
-		// ginkgoArgsAndFlags = append([]string{" --mod", "vendor", "-v"}, ginkgoArgsAndFlags...)
+		output.PrintEvent("found vendor dir, use --mod vendor")
+		ginkgoArgsAndFlags = append([]string{" --mod", "vendor"}, ginkgoArgsAndFlags...)
 	}
-
-	output.PrintEvent("Args and Flags Count:", len(ginkgoArgsAndFlags))
-	output.PrintEvent("Args and Flags:", ginkgoArgsAndFlags)
 
 	// run executor here
 	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
-
-	lsout, err := executor.Run(path, "ls")
-	if err == nil {
-		fmt.Println("--------------ls----------------")
-		output.PrintEvent("ls on dir post run: ", string(lsout))
-		fmt.Println("--------------------------------")
-	}
-
-	lsout, err = executor.Run(path, "ls", "other")
-	if err == nil {
-		fmt.Println("--------------ls----------------")
-		output.PrintEvent("ls on other/ post run: ", string(lsout))
-		fmt.Println("--------------------------------")
-	}
-
-	lsout, err = executor.Run(path, "ls", "/tmp/")
-	if err == nil {
-		fmt.Println("--------------ls----------------")
-		output.PrintEvent("ls on /tmp/ post run: ", string(lsout))
-		fmt.Println("--------------------------------")
-	}
 
 	// generate report/result
 	suites, serr := junit.IngestFile(path + strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
@@ -110,7 +86,8 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	return result.WithErrors(err, serr), nil
 }
 
-func InitializeGinkgoParams(ginkgoParams map[string]string) map[string]string {
+func InitializeGinkgoParams() map[string]string {
+	ginkgoParams := make(map[string]string)
 	ginkgoParams["GinkgoTestPackage"] = ""
 	ginkgoParams["GinkgoRecursive"] = "-r"                          // -r
 	ginkgoParams["GinkgoParallel"] = "-p"                           // -p
@@ -147,7 +124,6 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 	for k, p := range defaultParams {
 		v, found := vars[k]
 		if found {
-			output.PrintEvent(fmt.Sprintf("Found a default param in vars [%s], using new value:", k), v.Value)
 			retVal[k] = v.Value
 			delete(execution.Variables, k)
 		} else {
@@ -157,7 +133,6 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 		}
 	}
 	output.PrintEvent("matched up Ginkgo param defaults with those provided")
-	output.PrintEvent("execution.Variables:", execution.Variables)
 	return retVal
 }
 
@@ -171,7 +146,6 @@ func BuildGinkgoArgs(params map[string]string) []string {
 	if params["GinkgoTestPackage"] != "" {
 		args = append(args, params["GinkgoTestPackage"])
 	}
-	output.PrintEvent("created ginkgo args slice")
 	return args
 }
 
@@ -226,11 +200,7 @@ func MapJunitToExecutionResults(out []byte, suites []junit.Suite) (result testku
 	result.OutputType = "text/plain"
 	overallStatusFailed := false
 	for _, suite := range suites {
-		output.PrintEvent("Parsing Suite:", suite.Name)
 		for _, test := range suite.Tests {
-			output.PrintEvent("Parsing Test  :", test.Name)
-			output.PrintEvent("----->Duration:", test.Duration)
-			output.PrintEvent("----->Status  :", test.Status)
 			result.Steps = append(
 				result.Steps,
 				testkube.ExecutionStepResult{
@@ -259,7 +229,6 @@ func MapStatus(in junit.Status) (out string) {
 	case "passed":
 		return string(testkube.PASSED_ExecutionStatus)
 	default:
-		output.PrintEvent("----->FAILED<-----")
 		return string(testkube.FAILED_ExecutionStatus)
 	}
 }
