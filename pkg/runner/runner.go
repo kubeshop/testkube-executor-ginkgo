@@ -67,7 +67,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// Set up ginkgo command and potential args
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
 	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
-	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution.Variables)
+	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution)
 	ginkgoArgsAndFlags := append(ginkgoArgs, ginkgoPassThroughFlags...)
 
 	_, err = os.Stat(filepath.Join(path, "vendor"))
@@ -178,11 +178,17 @@ func BuildGinkgoArgs(params map[string]string) []string {
 // This should always be called after FindGinkgoParams so that it only
 // acts on the "left over" Variables that are to be treated as pass through
 // flags to GInkgo
-func BuildGinkgoPassThroughFlags(vars testkube.Variables) []string {
+func BuildGinkgoPassThroughFlags(execution testkube.Execution) []string {
+	vars := execution.Variables
+	args := execution.Args
 	flags := []string{}
 	for _, v := range vars {
 		flag := "--" + v.Name + "=" + v.Value
 		flags = append(flags, flag)
+	}
+
+	if len(args) > 0 {
+		flags = append(flags, args...)
 	}
 
 	if len(flags) > 0 {
@@ -218,7 +224,7 @@ func MapJunitToExecutionResults(out []byte, suites []junit.Suite) (result testku
 	result.Status = &status
 	result.Output = string(out)
 	result.OutputType = "text/plain"
-
+	overallStatusFailed := false
 	for _, suite := range suites {
 		output.PrintEvent("Parsing Suite:", suite.Name)
 		for _, test := range suite.Tests {
@@ -232,12 +238,19 @@ func MapJunitToExecutionResults(out []byte, suites []junit.Suite) (result testku
 					Duration: test.Duration.String(),
 					Status:   MapStatus(test.Status),
 				})
+			if test.Status == junit.Status(testkube.FAILED_ExecutionStatus) {
+				overallStatusFailed = true
+			}
 		}
 
 		// TODO parse sub suites recursively
 
 	}
-
+	if overallStatusFailed {
+		result.Status = testkube.ExecutionStatusFailed
+	} else {
+		result.Status = testkube.ExecutionStatusPassed
+	}
 	return result
 }
 
