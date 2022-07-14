@@ -110,10 +110,9 @@ func InitializeGinkgoParams() map[string]string {
 
 // Find any GinkgoParams in execution.Variables
 func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]string) map[string]string {
-	vars := execution.Variables
 	var retVal = make(map[string]string)
 	for k, p := range defaultParams {
-		v, found := vars[k]
+		v, found := execution.Variables[k]
 		if found {
 			retVal[k] = v.Value
 			delete(execution.Variables, k)
