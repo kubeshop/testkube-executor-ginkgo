@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// This will need changed to "https://github.com/kubeshop/testkube-executor-ginkgo.git"
+// 	once the working fork from jdborneman-terminus is merged
+const repoURI = "https://github.com/jdborneman-terminus/testkube-executor-ginkgo.git"
+
 func TestRun(t *testing.T) {
 	t.Run("GinkgoRunner should run tests from a repo that pass", func(t *testing.T) {
 		checkForGinkgoCmd := exec.Command("ginkgo", "version")
@@ -26,7 +30,6 @@ func TestRun(t *testing.T) {
 		if err != nil {
 			t.Fail()
 		}
-		repoURI := "https://github.com/jdborneman-terminus/testkube-executor-ginkgo.git"
 		vars := make(map[string]testkube.Variable)
 		variable_one := testkube.Variable{
 			Name:  "GinkgoTestPackage",
@@ -62,7 +65,6 @@ func TestRun(t *testing.T) {
 		if err != nil {
 			t.Fail()
 		}
-		repoURI := "https://github.com/jdborneman-terminus/testkube-executor-ginkgo.git"
 		vars := make(map[string]testkube.Variable)
 		variable_one := testkube.Variable{
 			Name:  "GinkgoTestPackage",
