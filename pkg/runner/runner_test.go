@@ -1,6 +1,9 @@
 package runner
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
@@ -8,6 +11,79 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	t.Run("GinkgoRunner should run tests from a repo that pass", func(t *testing.T) {
+		checkForGinkgoCmd := exec.Command("ginkgo", "version")
+		err := checkForGinkgoCmd.Run()
+		if err != nil {
+			fmt.Println("SKIPPING TEST: Ginkgo Not Installed")
+			t.Skip()
+		}
+
+		os.Setenv("RUNNER_GITUSERNAME", "testuser")
+		os.Setenv("RUNNER_GITTOKEN", "testtoken")
+		runner, err := NewGinkgoRunner()
+
+		if err != nil {
+			t.Fail()
+		}
+		repoURI := "https://github.com/jdborneman-terminus/testkube-executor-ginkgo.git"
+		vars := make(map[string]testkube.Variable)
+		variable_one := testkube.Variable{
+			Name:  "GinkgoTestPackage",
+			Value: "examples/e2e",
+		}
+		vars["GinkgoTestPackage"] = variable_one
+		result, err := runner.Run(testkube.Execution{
+			Content: &testkube.TestContent{
+				Type_: string(testkube.TestContentTypeGitDir),
+				Repository: &testkube.Repository{
+					Type_:  "git",
+					Uri:    repoURI,
+					Branch: "main",
+				},
+			},
+			Variables: vars,
+		})
+
+		assert.Equal(t, testkube.ExecutionStatusPassed, result.Status)
+	})
+
+	t.Run("GinkgoRunner should run tests from a repo that fail", func(t *testing.T) {
+		checkForGinkgoCmd := exec.Command("ginkgo", "version")
+		err := checkForGinkgoCmd.Run()
+		if err != nil {
+			fmt.Println("SKIPPING TEST: Ginkgo Not Installed")
+			t.Skip()
+		}
+
+		os.Setenv("RUNNER_GITUSERNAME", "testuser")
+		os.Setenv("RUNNER_GITTOKEN", "testtoken")
+		runner, err := NewGinkgoRunner()
+		if err != nil {
+			t.Fail()
+		}
+		repoURI := "https://github.com/jdborneman-terminus/testkube-executor-ginkgo.git"
+		vars := make(map[string]testkube.Variable)
+		variable_one := testkube.Variable{
+			Name:  "GinkgoTestPackage",
+			Value: "examples/other",
+		}
+		vars["GinkgoTestPackage"] = variable_one
+		result, err := runner.Run(testkube.Execution{
+			Content: &testkube.TestContent{
+				Type_: string(testkube.TestContentTypeGitDir),
+				Repository: &testkube.Repository{
+					Type_:  "git",
+					Uri:    repoURI,
+					Branch: "main",
+				},
+			},
+			Variables: vars,
+		})
+
+		assert.Equal(t, testkube.ExecutionStatusFailed, result.Status)
+	})
+
 	t.Run("InitializeGinkgoParams should should set up some default parameters for ginkgo", func(t *testing.T) {
 		defaultParams := InitializeGinkgoParams()
 		assert.Equal(t, "", defaultParams["GinkgoTestPackage"])
