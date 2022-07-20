@@ -11,9 +11,13 @@ Please visit the main Testkube repository for reporting any [issues](https://git
 ## Details 
 
 ### Supports Git Repo Testing Only
-Example `kubectl testkube create test` call:
+**Example `kubectl testkube create test` call, git by branch:**
 
-`$ kubectl testkube create test --git-uri \<URI TO A GOLANG REPO THAT CONTAINS GINKGO TESTS> --git-branch main --name ginkgo-test --type ginkgo/test --git-username \<GIT USER> --git-token=\<GIT TOKEN>`
+`$ kubectl testkube create test --git-uri <URI TO A GOLANG REPO THAT CONTAINS GINKGO TESTS> --git-branch main --name ginkgo-test --type ginkgo/test --git-username <GIT USER> --git-token=<GIT TOKEN>`
+
+**Example `kubectl testkube create test` call, git by commit id:**
+
+`$ kubectl testkube create test --git-uri <URI TO A GOLANG REPO THAT CONTAINS GINKGO TESTS> --git-commit <GIT COMMIT ID/SHA> --name ginkgo-test --type ginkgo/test --git-username <GIT USER> --git-token=<GIT TOKEN>`
 
 ### Parameters:
 Pass in/override Ginkgo parameters with -v Variables. 
