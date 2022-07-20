@@ -44,7 +44,7 @@ Pass in/override Ginkgo parameters with -v Variables.
 * `GinkgoTeamCityReport`, default: `""`, usage: `--teamcity-report report.teamcity`
 
 ### Pass-through args to Ginkgo:
-Add `--args '--base-url=example.com --some-arg=value'` to `kubectl testkuve run test` command.
+Add `--args '--base-url=example.com --some-arg=value'` to `kubectl testkube run test` command.
 
 ### Example CLI Test Execution Calls
 * `kubectl testkube run test ginkgo-test -f` : Executes the testkube named `ginkgo-test` and will run (recursively, with -r flag) all Ginkgo tests within the repo.
