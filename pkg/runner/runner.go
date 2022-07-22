@@ -2,6 +2,8 @@ package runner
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	junit "github.com/joshdk/go-junit"
@@ -9,15 +11,25 @@ import (
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
-	"github.com/kubeshop/testkube/pkg/executor/output"
+	"github.com/kubeshop/testkube/pkg/executor/scraper"
 )
 
 var ginkgoDefaultParams = InitializeGinkgoParams()
 var ginkgoBin = "ginkgo"
 
 type Params struct {
+	// GitHub Params
 	GitUsername string `required:"true"` // RUNNER_GITUSERNAME
 	GitToken    string `required:"true"` // RUNNER_GITTOKEN
+
+	// Scraper Params
+	Endpoint        string // RUNNER_ENDPOINT
+	AccessKeyID     string // RUNNER_ACCESSKEYID
+	SecretAccessKey string // RUNNER_SECRETACCESSKEY
+	Location        string // RUNNER_LOCATION
+	Token           string // RUNNER_TOKEN
+	Ssl             bool   // RUNNER_SSL
+	ScrapperEnabled bool   // RUNNER_SCRAPPERENABLED
 }
 
 func NewGinkgoRunner() (*GinkgoRunner, error) {
@@ -29,7 +41,15 @@ func NewGinkgoRunner() (*GinkgoRunner, error) {
 
 	runner := &GinkgoRunner{
 		Fetcher: content.NewFetcher(""),
-		Params:  params,
+		Scraper: scraper.NewMinioScraper(
+			params.Endpoint,
+			params.AccessKeyID,
+			params.SecretAccessKey,
+			params.Location,
+			params.Token,
+			params.Ssl,
+		),
+		Params: params,
 	}
 
 	return runner, nil
@@ -38,6 +58,7 @@ func NewGinkgoRunner() (*GinkgoRunner, error) {
 type GinkgoRunner struct {
 	Params  Params
 	Fetcher content.ContentFetcher
+	Scraper scraper.Scraper
 }
 
 func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
@@ -63,18 +84,70 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// Set up ginkgo command and potential args
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
-	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
+	ginkgoArgs, err := BuildGinkgoArgs(ginkgoParams)
+	if err != nil {
+		return result, err
+	}
 	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution)
 	ginkgoArgsAndFlags := append(ginkgoArgs, ginkgoPassThroughFlags...)
+
+	// set up reports directory
+	reportsPath := filepath.Join(path, "reports")
+	if _, err := os.Stat(reportsPath); os.IsNotExist(err) {
+		mkdirErr := os.Mkdir(reportsPath, os.ModePerm)
+		if mkdirErr != nil {
+			return result, mkdirErr
+		}
+	}
 
 	// run executor here
 	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
 
 	// generate report/result
-	suites, serr := junit.IngestFile(path + strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
+	if ginkgoParams["GinkgoJsonReport"] != "" {
+		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoJsonReport"], " ")[1])
+		if moveErr != nil {
+			return result, moveErr
+		}
+	}
+	if ginkgoParams["GinkgoJunitReport"] != "" {
+		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
+		if moveErr != nil {
+			return result, moveErr
+		}
+	}
+	if ginkgoParams["GinkgoTeamCityReport"] != "" {
+		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoTeamCityReport"], " ")[1])
+		if moveErr != nil {
+			return result, moveErr
+		}
+	}
+	suites, serr := junit.IngestFile(filepath.Join(reportsPath, strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1]))
 	result = MapJunitToExecutionResults(out, suites)
 
+	// scrape artifacts first even if there are errors above
+
+	if r.Params.ScrapperEnabled {
+		directories := []string{
+			reportsPath,
+		}
+		err := r.Scraper.Scrape(execution.Id, directories)
+		if err != nil {
+			return result.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
+		}
+	}
+
 	return result.WithErrors(err, serr), nil
+}
+
+func MoveReport(path string, reportsPath string, reportFileName string) error {
+	oldpath := filepath.Join(path, reportFileName)
+	newpath := filepath.Join(reportsPath, reportFileName)
+	err := os.Rename(oldpath, newpath)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func InitializeGinkgoParams() map[string]string {
@@ -95,16 +168,15 @@ func InitializeGinkgoParams() map[string]string {
 	ginkgoParams["GinkgoTimeout"] = ""                              // --timeout=duration
 	ginkgoParams["GinkgoSkipPackage"] = ""                          // --skip-package list,of,packages
 	ginkgoParams["GinkgoFailFast"] = ""                             // --fail-fast
-	ginkgoParams["GinkgoKeepGoing"] = ""                            // --keep-going
+	ginkgoParams["GinkgoKeepGoing"] = "--keep-going"                // --keep-going
 	ginkgoParams["GinkgoFailOnPending"] = ""                        // --fail-on-pending
 	ginkgoParams["GinkgoCover"] = ""                                // --cover
 	ginkgoParams["GinkgoCoverProfile"] = ""                         // --coverprofile cover.profile
 	ginkgoParams["GinkgoRace"] = ""                                 // --race
 	ginkgoParams["GinkgoTrace"] = "--trace"                         // --trace
-	ginkgoParams["GinkgoJsonReport"] = ""                           // --json-report report.json
-	ginkgoParams["GinkgoJunitReport"] = "--junit-report report.xml" // --junit-report report.xml
-	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report report.teamcity
-	output.PrintEvent("Initialized Ginkgo Parameters. Count:", len(ginkgoParams))
+	ginkgoParams["GinkgoJsonReport"] = ""                           // --json-report report.json [will be stored in reports/filename]
+	ginkgoParams["GinkgoJunitReport"] = "--junit-report report.xml" // --junit-report report.xml [will be stored in reports/filename]
+	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report report.teamcity [will be stored in reports/filename]
 	return ginkgoParams
 }
 
@@ -122,11 +194,10 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 			}
 		}
 	}
-	output.PrintEvent("matched up Ginkgo param defaults with those provided")
 	return retVal
 }
 
-func BuildGinkgoArgs(params map[string]string) []string {
+func BuildGinkgoArgs(params map[string]string) ([]string, error) {
 	args := []string{}
 	for k, p := range params {
 		if k != "GinkgoTestPackage" {
@@ -136,7 +207,7 @@ func BuildGinkgoArgs(params map[string]string) []string {
 	if params["GinkgoTestPackage"] != "" {
 		args = append(args, params["GinkgoTestPackage"])
 	}
-	return args
+	return args, nil
 }
 
 // This should always be called after FindGinkgoParams so that it only
