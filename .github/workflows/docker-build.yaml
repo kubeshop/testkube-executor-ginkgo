@@ -43,5 +43,4 @@ jobs:
             build/agent/docker-bake.hcl
             ${{ steps.meta_ginkgo_executor.outputs.bake-file }}
           targets: build
-          set: build.args.TOKEN=${{ secrets.PERSONAL_ACCESS_TOKEN }}
           push: true
