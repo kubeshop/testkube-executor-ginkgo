@@ -24,11 +24,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Docker meta for Template executor
-        id: meta_template_executor
+      - name: Docker meta for Ginkgo executor
+        id: meta_ginkgo_executor
         uses: docker/metadata-action@v3
         with:
-          images: kubeshop/testkube-template-executor
+          images: kubeshop/testkube-ginkgo-executor
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -36,12 +36,12 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha
 
-      - name: Build Template Executor
+      - name: Build Ginkgo Executor
         uses: docker/bake-action@v1
         with:
           files: |
-            build/template-executor/docker-bake.hcl
-            ${{ steps.meta_template_executor.outputs.bake-file }}
+            build/ginkgo-executor/docker-bake.hcl
+            ${{ steps.meta_ginkgo_executor.outputs.bake-file }}
           targets: build
           set: build.args.TOKEN=${{ secrets.PERSONAL_ACCESS_TOKEN }}
           push: true

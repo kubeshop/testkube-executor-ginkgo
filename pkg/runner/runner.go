@@ -1,54 +1,224 @@
 package runner
 
 import (
+	"fmt"
+	"strings"
+
+	junit "github.com/joshdk/go-junit"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
+	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 )
 
-func NewRunner() *ExampleRunner {
-	return &ExampleRunner{
-		Fetcher: content.NewFetcher(""),
-	}
+var ginkgoDefaultParams = InitializeGinkgoParams()
+var ginkgoBin = "ginkgo"
+
+type Params struct {
+	GitUsername string `required:"true"` // RUNNER_GITUSERNAME
+	GitToken    string `required:"true"` // RUNNER_GITTOKEN
 }
 
-// ExampleRunner for template - change me to some valid runner
-type ExampleRunner struct {
+func NewGinkgoRunner() (*GinkgoRunner, error) {
+	var params Params
+	err := envconfig.Process("runner", &params)
+	if err != nil {
+		return nil, err
+	}
+
+	runner := &GinkgoRunner{
+		Fetcher: content.NewFetcher(""),
+		Params:  params,
+	}
+
+	return runner, nil
+}
+
+type GinkgoRunner struct {
+	Params  Params
 	Fetcher content.ContentFetcher
 }
 
-func (r *ExampleRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
+func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
+	err = r.Validate(execution)
+	if err != nil {
+		return result, err
+	}
+
+	// Set github user and token params in Content.Repository
+	if r.Params.GitUsername != "" && r.Params.GitToken != "" {
+		if execution.Content != nil && execution.Content.Repository != nil {
+			execution.Content.Repository.Username = r.Params.GitUsername
+			execution.Content.Repository.Token = r.Params.GitToken
+		}
+	}
 
 	// use `execution.Variables` for variables passed from Test/Execution
 	// variables of type "secret" will be automatically decoded
-
 	path, err := r.Fetcher.Fetch(execution.Content)
 	if err != nil {
 		return result, err
 	}
 
-	output.PrintEvent("created content path", path)
+	// Set up ginkgo command and potential args
+	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
+	ginkgoArgs := BuildGinkgoArgs(ginkgoParams)
+	ginkgoPassThroughFlags := BuildGinkgoPassThroughFlags(execution)
+	ginkgoArgsAndFlags := append(ginkgoArgs, ginkgoPassThroughFlags...)
+
+	// run executor here
+	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
+
+	// generate report/result
+	suites, serr := junit.IngestFile(path + strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
+	result = MapJunitToExecutionResults(out, suites)
+
+	return result.WithErrors(err, serr), nil
+}
+
+func InitializeGinkgoParams() map[string]string {
+	ginkgoParams := make(map[string]string)
+	ginkgoParams["GinkgoTestPackage"] = ""
+	ginkgoParams["GinkgoRecursive"] = "-r"                          // -r
+	ginkgoParams["GinkgoParallel"] = "-p"                           // -p
+	ginkgoParams["GinkgoParallelProcs"] = ""                        // --procs N
+	ginkgoParams["GinkgoCompilers"] = ""                            // --compilers N
+	ginkgoParams["GinkgoRandomize"] = "--randomize-all"             // --randomize-all
+	ginkgoParams["GinkgoRandomizeSuites"] = "--randomize-suites"    // --randomize-suites
+	ginkgoParams["GinkgoLabelFilter"] = ""                          // --label-filter QUERY
+	ginkgoParams["GinkgoFocusFilter"] = ""                          // --focus REGEXP
+	ginkgoParams["GinkgoSkipFilter"] = ""                           // --skip REGEXP
+	ginkgoParams["GinkgoUntilItFails"] = ""                         // --until-it-fails
+	ginkgoParams["GinkgoRepeat"] = ""                               // --repeat N
+	ginkgoParams["GinkgoFlakeAttempts"] = ""                        // --flake-attempts N
+	ginkgoParams["GinkgoTimeout"] = ""                              // --timeout=duration
+	ginkgoParams["GinkgoSkipPackage"] = ""                          // --skip-package list,of,packages
+	ginkgoParams["GinkgoFailFast"] = ""                             // --fail-fast
+	ginkgoParams["GinkgoKeepGoing"] = ""                            // --keep-going
+	ginkgoParams["GinkgoFailOnPending"] = ""                        // --fail-on-pending
+	ginkgoParams["GinkgoCover"] = ""                                // --cover
+	ginkgoParams["GinkgoCoverProfile"] = ""                         // --coverprofile cover.profile
+	ginkgoParams["GinkgoRace"] = ""                                 // --race
+	ginkgoParams["GinkgoTrace"] = "--trace"                         // --trace
+	ginkgoParams["GinkgoJsonReport"] = ""                           // --json-report report.json
+	ginkgoParams["GinkgoJunitReport"] = "--junit-report report.xml" // --junit-report report.xml
+	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report report.teamcity
+	output.PrintEvent("Initialized Ginkgo Parameters. Count:", len(ginkgoParams))
+	return ginkgoParams
+}
+
+// Find any GinkgoParams in execution.Variables
+func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]string) map[string]string {
+	var retVal = make(map[string]string)
+	for k, p := range defaultParams {
+		v, found := execution.Variables[k]
+		if found {
+			retVal[k] = v.Value
+			delete(execution.Variables, k)
+		} else {
+			if p != "" {
+				retVal[k] = p
+			}
+		}
+	}
+	output.PrintEvent("matched up Ginkgo param defaults with those provided")
+	return retVal
+}
+
+func BuildGinkgoArgs(params map[string]string) []string {
+	args := []string{}
+	for k, p := range params {
+		if k != "GinkgoTestPackage" {
+			args = append(args, strings.Split(p, " ")...)
+		}
+	}
+	if params["GinkgoTestPackage"] != "" {
+		args = append(args, params["GinkgoTestPackage"])
+	}
+	return args
+}
+
+// This should always be called after FindGinkgoParams so that it only
+// acts on the "left over" Variables that are to be treated as pass through
+// flags to GInkgo
+func BuildGinkgoPassThroughFlags(execution testkube.Execution) []string {
+	vars := execution.Variables
+	args := execution.Args
+	flags := []string{}
+	for _, v := range vars {
+		flag := "--" + v.Name + "=" + v.Value
+		flags = append(flags, flag)
+	}
+
+	if len(args) > 0 {
+		flags = append(flags, args...)
+	}
+
+	if len(flags) > 0 {
+		flags = append([]string{"--"}, flags...)
+	}
+
+	return flags
+}
+
+// Validate checks if Execution has valid data in context of Cypress executor
+func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
+
+	if execution.Content == nil {
+		return fmt.Errorf("can't find any content to run in execution data: %+v", execution)
+	}
+
+	if execution.Content.Repository == nil {
+		return fmt.Errorf("ginkgo executor handles only repository based tests, but repository is nil")
+	}
+
+	if execution.Content.Repository.Branch == "" && execution.Content.Repository.Commit == "" {
+		return fmt.Errorf("can't find branch or commit in params must use one or the other, repo:%+v", execution.Content.Repository)
+	}
 
 	if execution.Content.IsFile() {
-		output.PrintEvent("using file", execution)
-		// TODO implement file based test content for string, git-file, file-uri
-		//      or remove if not used
+		return fmt.Errorf("passing ginkgo test as single file not implemented yet")
 	}
+	return nil
+}
 
-	if execution.Content.IsDir() {
-		output.PrintEvent("using dir", execution)
-		// TODO implement file based test content for git-dir
-		//      or remove if not used
+func MapJunitToExecutionResults(out []byte, suites []junit.Suite) (result testkube.ExecutionResult) {
+	status := testkube.PASSED_ExecutionStatus
+	result.Status = &status
+	result.Output = string(out)
+	result.OutputType = "text/plain"
+	overallStatusFailed := false
+	for _, suite := range suites {
+		for _, test := range suite.Tests {
+			result.Steps = append(
+				result.Steps,
+				testkube.ExecutionStepResult{
+					Name:     fmt.Sprintf("%s - %s", suite.Name, test.Name),
+					Duration: test.Duration.String(),
+					Status:   MapStatus(test.Status),
+				})
+			if test.Status == junit.Status(testkube.FAILED_ExecutionStatus) {
+				overallStatusFailed = true
+			}
+		}
+
+		// TODO parse sub suites recursively
+
 	}
+	if overallStatusFailed {
+		result.Status = testkube.ExecutionStatusFailed
+	} else {
+		result.Status = testkube.ExecutionStatusPassed
+	}
+	return result
+}
 
-	// TODO run executor here
-
-	// error result should be returned if something is not ok
-	// return result.Err(fmt.Errorf("some test execution related error occured"))
-
-	// TODO return ExecutionResult
-	return testkube.ExecutionResult{
-		Status: testkube.ExecutionStatusPassed,
-		Output: "exmaple test output",
-	}, nil
+func MapStatus(in junit.Status) (out string) {
+	switch string(in) {
+	case "passed":
+		return string(testkube.PASSED_ExecutionStatus)
+	default:
+		return string(testkube.FAILED_ExecutionStatus)
+	}
 }

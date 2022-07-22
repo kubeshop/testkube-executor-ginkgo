@@ -28,3 +28,8 @@ site
 dist/
 
 .vscode
+
+# Local dev stuff
+dockerhubdeploy.sh
+ginkgo-executor.yaml
+runtest.sh

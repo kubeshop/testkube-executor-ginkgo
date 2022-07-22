@@ -1,77 +1,65 @@
 ![Testkube Logo](https://raw.githubusercontent.com/kubeshop/testkube/main/assets/testkube-color-gray.png)
+                                                           
+# Welcome to the Testkube Ginkgo Executor
 
-# Welcome to TestKube Template Executor
-
-TestKube Template Executor is a test executor skeleton for [TestKube](https://testkube.io).  
-You can use it as basic building blocks for creating a new executor.
-
-# What is an Executor?
-
-Executor is nothing more than a program wrapped into Docker container which gets JSON (testube.Execution) OpenAPI based document as an input and returns a stream of JSON output lines (testkube.ExecutorOutput), where each output line is simply wrapped in this JSON, similar to the structured logging idea. 
-
+The Kubetest Ginkgo Executor is a test executor for [testkube](https://testkube.io).
 
 # Issues and enchancements 
 
-Please follow the main [TestKube repository](https://github.com/kubeshop/testkube) for reporting any [issues](https://github.com/kubeshop/testkube/issues) or [discussions](https://github.com/kubeshop/testkube/discussions)
+Please visit the main Testkube repository for reporting any [issues](https://github.com/kubeshop/testkube/issues) or [discussions](https://github.com/kubeshop/testkube/discussions).
 
-## Implemention in several steps:
+## Details 
 
-1. Create new repo on top of this template 
-2. Change `go.mod` file with your path (just replace `github.com/kubeshop/testkube-executor-template` project-wise with your package path) 
-3. Implement your own Runner on top of [runner interface](https://github.com/kubeshop/testkube/blob/main/pkg/runner/interface.go
-4. Change Dockerfile - use base image of whatever test framework/library you want to use
-5. Build and push dockerfile to some repository
-6. Register Executor Custom Resource in your cluster 
+### Supports Git Repo Testing Only
+**Example `kubectl testkube create test` call, git by branch:**
 
-```yaml
-apiVersion: executor.testkube.io/v1
-kind: Executor
-metadata:
-  name: postman-executor
-  namespace: testkube
-spec:
-  executor_type: job
-  image: kubeshop/testkube-template-executor:0.0.1
-  types:
-  - example/test
-```
+`$ kubectl testkube create test --git-uri <URI TO A GOLANG REPO THAT CONTAINS GINKGO TESTS> --git-branch main --name ginkgo-test --type ginkgo/test --git-username <GIT USER> --git-token=<GIT TOKEN>`
 
+**Example `kubectl testkube create test` call, git by commit id:**
+
+`$ kubectl testkube create test --git-uri <URI TO A GOLANG REPO THAT CONTAINS GINKGO TESTS> --git-commit <GIT COMMIT ID/SHA> --name ginkgo-test --type ginkgo/test --git-username <GIT USER> --git-token=<GIT TOKEN>`
+
+### Parameters:
+Pass in/override Ginkgo parameters with -v Variables. 
+* `GinkgoTestPackage`, default: `""`
+* `GinkgoRecursive`, default: `-r`
+* `GinkgoParallel`, default: `-p`
+* `GinkgoParallelProcs`, default: `""`, usage: `--procs N`
+* `GinkgoCompilers`, default: `""`, usage: `--compilers N`
+* `GinkgoRandomize`, default: `--randomize-all`
+* `GinkgoRandomizeSuites`, default: `--randomize-suites`
+* `GinkgoLabelFilter`, default: `""`, usage: `--label-filter QUERY`
+* `GinkgoFocusFilter`, default: `""`, usage: `--focus REGEXP`
+* `GinkgoSkipFilter`, default: `""`, usage: `--skip REGEXP`
+* `GinkgoUntilItFails`, default: `""`, usage: `--until-it-fails`
+* `GinkgoRepeat`, default: `""`, usage: `--repeat N`
+* `GinkgoFlakeAttempts`, default: `""`, usage: `--flake-attempts N`
+* `GinkgoTimeout`, default: `""`, usage: `--timeout=duration`
+* `GinkgoSkipPackage`, default: `""`, usage: `--skip-package list,of,packages`
+* `GinkgoFailFast`, default: `""`, usage: `--fail-fast`
+* `GinkgoKeepGoing`, default: `""`, usage: `--keep-going`
+* `GinkgoFailOnPending`, default: `""`, usage: `--fail-on-pending`
+* `GinkgoCover`, default: `""`, usage: `--cover`
+* `GinkgoCoverProfile`, default: `""`, usage: `--coverprofile cover.profile`
+* `GinkgoRace`, default: `""`, usage: `--race`
+* `GinkgoTrace`, default: `"--trace"`
+* `GinkgoJsonReport`, default: `""`, usage: `--json-report report.json`
+* `GinkgoJunitReport`, default: `"--junit-report report.xml"`
+* `GinkgoTeamCityReport`, default: `""`, usage: `--teamcity-report report.teamcity`
+
+### Pass-through args to Ginkgo:
+Add `--args '--base-url=example.com --some-arg=value'` to `kubectl testkube run test` command.
+
+### Example CLI Test Execution Calls
+* `kubectl testkube run test ginkgo-test -f` : Executes the testkube named `ginkgo-test` and will run (recursively, with -r flag) all Ginkgo tests within the repo.
+* `kubectl testkube run test ginkgo-test -f -v GinkgoTestPackage=e2e` : Executes the testkube named `ginkgo-test` and overrides `GinkgoTestPackage` to run the `e2e` package in the repo.
+* `kubectl testkube run test ginkgo-test -f -v GinkgoSkipPackage="--skip-package other,other2" -v GinkgoParallel=""` : Executes the testkube and skips packages named `other` and `other2`, as well as turns _off_ Parallel Execution.
+* `kubectl testkube run test ginkgo-test -f -v GinkgoTestPackage=e2e ---args '--base-url=example.com'` : Executes the e2e test package and provies a passthrough arg named `base-url` set to `example.com`.
 
 ## Architecture
 
-This Executor template offers you basic building blocks to write a new executor based on TestKube 
-libraries written in Go programming language, but you're not limited only to Go, you can 
-write in any other programming language like Rust, Javascript, Java or Clojure.
+- TODO add architecture diagrams
 
-The only thing you'll need to do is to follow the OpenAPI spec for input `testkube.Execution` 
-(passed as first argument in JSON form) and all output should be JSON lines 
-with `testkube.ExecutorOutput` spec.  
-You should also have a final `ExecutorOutput` with `ExecutionResult` attached somewhere after successful (or failed) test execution.
+## API 
 
-Resources: 
-- [OpenAPI spec details](https://kubeshop.github.io/testkube/openapi/)
-- [Spec in YAML file](https://raw.githubusercontent.com/kubeshop/testkube/main/api/v1/testkube.yaml)
-
-Go based resources for input and output objects:
-- input: [`testkube.Execution`](https://github.com/kubeshop/testkube/blob/main/pkg/api/v1/testkube/model_execution.go)
-- output line: [`testkube.ExecutorOutput`](https://github.com/kubeshop/testkube/blob/main/pkg/api/v1/testkube/model_executor_output.go)
-
-
-## Examples
-
-- This template repo, which is the simplest one
-- [Postman executor](https://github.com/kubeshop/testkube-executor-postman)
-- [Cypress executor](https://github.com/kubeshop/testkube-executor-cypress)
-- [Curl executor](https://github.com/kubeshop/testkube-executor-curl)
-
-
-# Testkube 
-
-For more info go to [main testkube repo](https://github.com/kubeshop/testkube)
-
-![Release](https://img.shields.io/github/v/release/kubeshop/testkube) [![Releases](https://img.shields.io/github/downloads/kubeshop/testkube/total.svg)](https://github.com/kubeshop/testkube/tags?label=Downloads) ![Go version](https://img.shields.io/github/go-mod/go-version/kubeshop/testkube)
-
-![Docker builds](https://img.shields.io/docker/automated/kubeshop/testkube-api-server) ![Code build](https://img.shields.io/github/workflow/status/kubeshop/testkube/Code%20build%20and%20checks) ![Release date](https://img.shields.io/github/release-date/kubeshop/testkube)
-
-![Twitter](https://img.shields.io/twitter/follow/thekubeshop?style=social) ![Discord](https://img.shields.io/discord/884464549347074049)
- #### [Documentation](https://kubeshop.github.io/testkube) | [Discord](https://discord.gg/hfq44wtR6Q) 
+Cypress executor implements [testkube OpenAPI for executors](https://kubeshop.github.io/testkube/openapi/#operations-tag-executor) (look at executor tag).
