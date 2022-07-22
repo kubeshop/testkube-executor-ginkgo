@@ -119,7 +119,8 @@ func TestRun(t *testing.T) {
 
 	t.Run("BuildGinkgoArgs should build ginkgo args slice", func(t *testing.T) {
 		defaultParams := InitializeGinkgoParams()
-		argSlice := BuildGinkgoArgs(defaultParams)
+		argSlice, err := BuildGinkgoArgs(defaultParams)
+		assert.Nil(t, err)
 		assert.Contains(t, argSlice, "-r")
 		assert.Contains(t, argSlice, "-p")
 		assert.Contains(t, argSlice, "--randomize-all")
