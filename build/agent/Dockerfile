@@ -18,4 +18,7 @@ COPY --from=0 /runner /bin/runner
 COPY --from=0 /build/ginkgo /bin/ginkgo
 RUN go version
 RUN ginkgo version
+
+USER 1001
+
 ENTRYPOINT ["/bin/runner"]
