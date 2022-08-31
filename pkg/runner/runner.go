@@ -12,6 +12,7 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
+	"github.com/kubeshop/testkube/pkg/executor/secret"
 )
 
 var ginkgoDefaultParams = InitializeGinkgoParams()
@@ -77,6 +78,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// use `execution.Variables` for variables passed from Test/Execution
 	// variables of type "secret" will be automatically decoded
+	secret.NewEnvManager().GetVars(execution.Variables)
 	path, err := r.Fetcher.Fetch(execution.Content)
 	if err != nil {
 		return result, err
