@@ -102,6 +102,12 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		}
 	}
 
+	// add configuration files
+	err = content.PlaceFiles(execution.CopyFiles)
+	if err != nil {
+		return result.Err(fmt.Errorf("could not place config files: %w", err)), nil
+	}
+
 	// run executor here
 	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
 
