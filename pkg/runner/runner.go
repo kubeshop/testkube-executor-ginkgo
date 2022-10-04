@@ -78,7 +78,8 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// use `execution.Variables` for variables passed from Test/Execution
 	// variables of type "secret" will be automatically decoded
-	secret.NewEnvManager().GetVars(execution.Variables)
+	envManager := secret.NewEnvManagerWithVars(execution.Variables)
+	envManager.GetVars(execution.Variables)
 	path, err := r.Fetcher.Fetch(execution.Content)
 	if err != nil {
 		return result, err
@@ -109,7 +110,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// run executor here
-	out, err := executor.Run(path, ginkgoBin, ginkgoArgsAndFlags...)
+	out, err := executor.Run(path, ginkgoBin, envManager, ginkgoArgsAndFlags...)
 
 	// generate report/result
 	if ginkgoParams["GinkgoJsonReport"] != "" {
