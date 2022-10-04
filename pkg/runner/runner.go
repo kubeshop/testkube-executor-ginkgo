@@ -111,6 +111,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// run executor here
 	out, err := executor.Run(path, ginkgoBin, envManager, ginkgoArgsAndFlags...)
+	out = envManager.Obfuscate(out)
 
 	// generate report/result
 	if ginkgoParams["GinkgoJsonReport"] != "" {
