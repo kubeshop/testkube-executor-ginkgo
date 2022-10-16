@@ -76,6 +76,13 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		}
 	}
 
+	// convert executor env variables to os env variables
+	for key, value := range execution.Envs {
+		if err = os.Setenv(key, value); err != nil {
+			return result, fmt.Errorf("setting env var: %w", err)
+		}
+	}
+	
 	// use `execution.Variables` for variables passed from Test/Execution
 	// variables of type "secret" will be automatically decoded
 	envManager := secret.NewEnvManagerWithVars(execution.Variables)
