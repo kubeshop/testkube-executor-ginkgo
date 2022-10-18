@@ -75,7 +75,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 			execution.Content.Repository.Token = r.Params.GitToken
 		}
 	}
-	
+
 	// convert executor env variables to os env variables
 	for key, value := range execution.Envs {
 		if err = os.Setenv(key, value); err != nil {
@@ -108,12 +108,6 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		if mkdirErr != nil {
 			return result, mkdirErr
 		}
-	}
-
-	// add configuration files
-	err = content.PlaceFiles(execution.CopyFiles)
-	if err != nil {
-		return result.Err(fmt.Errorf("could not place config files: %w", err)), nil
 	}
 
 	// run executor here
