@@ -31,6 +31,7 @@ type Params struct {
 	Token           string // RUNNER_TOKEN
 	Ssl             bool   // RUNNER_SSL
 	ScrapperEnabled bool   // RUNNER_SCRAPPERENABLED
+	DataDir         string // RUNNER_DATADIR
 }
 
 func NewGinkgoRunner() (*GinkgoRunner, error) {
@@ -92,9 +93,14 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
+	runPath := path
+	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
+		runPath = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.WorkingDir)
+	}
+
 	// Set up ginkgo command and potential args
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
-	ginkgoArgs, err := BuildGinkgoArgs(ginkgoParams)
+	ginkgoArgs, err := BuildGinkgoArgs(ginkgoParams, path, runPath)
 	if err != nil {
 		return result, err
 	}
@@ -111,7 +117,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// run executor here
-	out, err := executor.Run(path, ginkgoBin, envManager, ginkgoArgsAndFlags...)
+	out, err := executor.Run(runPath, ginkgoBin, envManager, ginkgoArgsAndFlags...)
 	out = envManager.Obfuscate(out)
 
 	// generate report/result
@@ -208,16 +214,22 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 	return retVal
 }
 
-func BuildGinkgoArgs(params map[string]string) ([]string, error) {
+func BuildGinkgoArgs(params map[string]string, path, runPath string) ([]string, error) {
 	args := []string{}
 	for k, p := range params {
 		if k != "GinkgoTestPackage" {
 			args = append(args, strings.Split(p, " ")...)
 		}
 	}
-	if params["GinkgoTestPackage"] != "" {
-		args = append(args, params["GinkgoTestPackage"])
+
+	if path == runPath {
+		if params["GinkgoTestPackage"] != "" {
+			args = append(args, params["GinkgoTestPackage"])
+		}
+	} else {
+		args = append(args, filepath.Join(path, params["GinkgoTestPackage"]))
 	}
+
 	return args, nil
 }
 
