@@ -93,13 +93,16 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
+	// Set up ginkgo params
+	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
+
 	runPath := path
 	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
 		runPath = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.WorkingDir)
+		path = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.Path)
 	}
 
-	// Set up ginkgo command and potential args
-	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
+	// Set up ginkgo potential args
 	ginkgoArgs, err := BuildGinkgoArgs(ginkgoParams, path, runPath)
 	if err != nil {
 		return result, err
@@ -122,19 +125,19 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// generate report/result
 	if ginkgoParams["GinkgoJsonReport"] != "" {
-		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoJsonReport"], " ")[1])
+		moveErr := MoveReport(runPath, reportsPath, strings.Split(ginkgoParams["GinkgoJsonReport"], " ")[1])
 		if moveErr != nil {
 			return result, moveErr
 		}
 	}
 	if ginkgoParams["GinkgoJunitReport"] != "" {
-		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
+		moveErr := MoveReport(runPath, reportsPath, strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
 		if moveErr != nil {
 			return result, moveErr
 		}
 	}
 	if ginkgoParams["GinkgoTeamCityReport"] != "" {
-		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoTeamCityReport"], " ")[1])
+		moveErr := MoveReport(runPath, reportsPath, strings.Split(ginkgoParams["GinkgoTeamCityReport"], " ")[1])
 		if moveErr != nil {
 			return result, moveErr
 		}
@@ -222,12 +225,16 @@ func BuildGinkgoArgs(params map[string]string, path, runPath string) ([]string, 
 		}
 	}
 
-	if path == runPath {
-		if params["GinkgoTestPackage"] != "" {
+	if params["GinkgoTestPackage"] != "" {
+		if path != runPath {
+			args = append(args, filepath.Join(path, params["GinkgoTestPackage"]))
+		} else {
 			args = append(args, params["GinkgoTestPackage"])
 		}
 	} else {
-		args = append(args, filepath.Join(path, params["GinkgoTestPackage"]))
+		if path != runPath {
+			args = append(args, path)
+		}
 	}
 
 	return args, nil
