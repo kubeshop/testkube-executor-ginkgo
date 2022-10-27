@@ -31,6 +31,7 @@ type Params struct {
 	Token           string // RUNNER_TOKEN
 	Ssl             bool   // RUNNER_SSL
 	ScrapperEnabled bool   // RUNNER_SCRAPPERENABLED
+	DataDir         string // RUNNER_DATADIR
 }
 
 func NewGinkgoRunner() (*GinkgoRunner, error) {
@@ -92,9 +93,17 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
-	// Set up ginkgo command and potential args
+	// Set up ginkgo params
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
-	ginkgoArgs, err := BuildGinkgoArgs(ginkgoParams)
+
+	runPath := path
+	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
+		runPath = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.WorkingDir)
+		path = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.Path)
+	}
+
+	// Set up ginkgo potential args
+	ginkgoArgs, err := BuildGinkgoArgs(ginkgoParams, path, runPath)
 	if err != nil {
 		return result, err
 	}
@@ -111,24 +120,24 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// run executor here
-	out, err := executor.Run(path, ginkgoBin, envManager, ginkgoArgsAndFlags...)
+	out, err := executor.Run(runPath, ginkgoBin, envManager, ginkgoArgsAndFlags...)
 	out = envManager.Obfuscate(out)
 
 	// generate report/result
 	if ginkgoParams["GinkgoJsonReport"] != "" {
-		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoJsonReport"], " ")[1])
+		moveErr := MoveReport(runPath, reportsPath, strings.Split(ginkgoParams["GinkgoJsonReport"], " ")[1])
 		if moveErr != nil {
 			return result, moveErr
 		}
 	}
 	if ginkgoParams["GinkgoJunitReport"] != "" {
-		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
+		moveErr := MoveReport(runPath, reportsPath, strings.Split(ginkgoParams["GinkgoJunitReport"], " ")[1])
 		if moveErr != nil {
 			return result, moveErr
 		}
 	}
 	if ginkgoParams["GinkgoTeamCityReport"] != "" {
-		moveErr := MoveReport(path, reportsPath, strings.Split(ginkgoParams["GinkgoTeamCityReport"], " ")[1])
+		moveErr := MoveReport(runPath, reportsPath, strings.Split(ginkgoParams["GinkgoTeamCityReport"], " ")[1])
 		if moveErr != nil {
 			return result, moveErr
 		}
@@ -208,16 +217,26 @@ func FindGinkgoParams(execution *testkube.Execution, defaultParams map[string]st
 	return retVal
 }
 
-func BuildGinkgoArgs(params map[string]string) ([]string, error) {
+func BuildGinkgoArgs(params map[string]string, path, runPath string) ([]string, error) {
 	args := []string{}
 	for k, p := range params {
 		if k != "GinkgoTestPackage" {
 			args = append(args, strings.Split(p, " ")...)
 		}
 	}
+
 	if params["GinkgoTestPackage"] != "" {
-		args = append(args, params["GinkgoTestPackage"])
+		if path != runPath {
+			args = append(args, filepath.Join(path, params["GinkgoTestPackage"]))
+		} else {
+			args = append(args, params["GinkgoTestPackage"])
+		}
+	} else {
+		if path != runPath {
+			args = append(args, path)
+		}
 	}
+
 	return args, nil
 }
 

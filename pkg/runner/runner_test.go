@@ -32,6 +32,7 @@ func TestRun(t *testing.T) {
 		variable_one := testkube.Variable{
 			Name:  "GinkgoTestPackage",
 			Value: "examples/e2e",
+			Type_: testkube.VariableTypeBasic,
 		}
 		vars["GinkgoTestPackage"] = variable_one
 		result, err := runner.Run(testkube.Execution{
@@ -67,6 +68,7 @@ func TestRun(t *testing.T) {
 		variable_one := testkube.Variable{
 			Name:  "GinkgoTestPackage",
 			Value: "examples/other",
+			Type_: testkube.VariableTypeBasic,
 		}
 		vars["GinkgoTestPackage"] = variable_one
 		result, err := runner.Run(testkube.Execution{
@@ -102,10 +104,12 @@ func TestRun(t *testing.T) {
 		variable_one := testkube.Variable{
 			Name:  "GinkgoTestPackage",
 			Value: "e2e",
+			Type_: testkube.VariableTypeBasic,
 		}
 		variable_two := testkube.Variable{
 			Name:  "GinkgoRecursive",
 			Value: "",
+			Type_: testkube.VariableTypeBasic,
 		}
 		variables["GinkgoTestPackage"] = variable_one
 		variables["GinkgoRecursive"] = variable_two
@@ -119,7 +123,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("BuildGinkgoArgs should build ginkgo args slice", func(t *testing.T) {
 		defaultParams := InitializeGinkgoParams()
-		argSlice, err := BuildGinkgoArgs(defaultParams)
+		argSlice, err := BuildGinkgoArgs(defaultParams, "", "")
 		assert.Nil(t, err)
 		assert.Contains(t, argSlice, "-r")
 		assert.Contains(t, argSlice, "-p")
@@ -135,10 +139,12 @@ func TestRun(t *testing.T) {
 		variable_one := testkube.Variable{
 			Name:  "one",
 			Value: "one",
+			Type_: testkube.VariableTypeBasic,
 		}
 		variable_two := testkube.Variable{
 			Name:  "two",
 			Value: "two",
+			Type_: testkube.VariableTypeBasic,
 		}
 		variables["GinkgoPassThroughOne"] = variable_one
 		variables["GinkgoPassThroughTwo"] = variable_two
