@@ -11,6 +11,7 @@ import (
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
+	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
 	"github.com/kubeshop/testkube/pkg/executor/secret"
 )
@@ -70,7 +71,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// Set github user and token params in Content.Repository
-	if r.Params.GitUsername != "" && r.Params.GitToken != "" {
+	if r.Params.GitUsername != "" || r.Params.GitToken != "" {
 		if execution.Content != nil && execution.Content.Repository != nil {
 			execution.Content.Repository.Username = r.Params.GitUsername
 			execution.Content.Repository.Token = r.Params.GitToken
@@ -322,4 +323,9 @@ func MapStatus(in junit.Status) (out string) {
 	default:
 		return string(testkube.FAILED_ExecutionStatus)
 	}
+}
+
+// GetType returns runner type
+func (r *GinkgoRunner) GetType() runner.Type {
+	return runner.TypeMain
 }
