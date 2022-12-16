@@ -21,8 +21,6 @@ func TestRun(t *testing.T) {
 			t.Skip()
 		}
 
-		os.Setenv("RUNNER_GITUSERNAME", "testuser")
-		os.Setenv("RUNNER_GITTOKEN", "testtoken")
 		runner, err := NewGinkgoRunner()
 
 		if err != nil {
