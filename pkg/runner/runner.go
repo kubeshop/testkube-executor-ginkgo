@@ -21,8 +21,8 @@ var ginkgoBin = "ginkgo"
 
 type Params struct {
 	// GitHub Params
-	GitUsername string `required:"true"` // RUNNER_GITUSERNAME
-	GitToken    string `required:"true"` // RUNNER_GITTOKEN
+	GitUsername string // RUNNER_GITUSERNAME
+	GitToken    string // RUNNER_GITTOKEN
 
 	// Scraper Params
 	Endpoint        string // RUNNER_ENDPOINT
