@@ -88,7 +88,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// use `execution.Variables` for variables passed from Test/Execution
 	// variables of type "secret" will be automatically decoded
 	envManager := secret.NewEnvManagerWithVars(execution.Variables)
-	envManager.GetVars(execution.Variables)
+	envManager.GetVars(envManager.Variables)
 	path, err := r.Fetcher.Fetch(execution.Content)
 	if err != nil {
 		return result, err
