@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	junit "github.com/joshdk/go-junit"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
 	"github.com/kubeshop/testkube/pkg/envs"
+	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
@@ -192,8 +192,8 @@ func InitializeGinkgoParams() map[string]string {
 	ginkgoParams["GinkgoJsonReport"] = ""                           // --json-report report.json [will be stored in reports/filename]
 	ginkgoParams["GinkgoJunitReport"] = "--junit-report report.xml" // --junit-report report.xml [will be stored in reports/filename]
 	ginkgoParams["GinkgoTeamCityReport"] = ""                       // --teamcity-report report.teamcity [will be stored in reports/filename]
-	
-	output.PrintLog(fmt.Sprintf("%s Initial Ginkgo parameters prepared: %s", ui.IconCheckMark, ginkgoParams[]))
+
+	output.PrintLog(fmt.Sprintf("%s Initial Ginkgo parameters prepared: %s", ui.IconCheckMark, ginkgoParams))
 	return ginkgoParams
 }
 
@@ -335,31 +335,7 @@ func MapStatus(in junit.Status) (out string) {
 	}
 }
 
-<<<<<<< Updated upstream
 // GetType returns runner type
 func (r *GinkgoRunner) GetType() runner.Type {
 	return runner.TypeMain
-=======
-// printParams shows the read parameters in logs
-func printParams(params Params) {
-	output.PrintLog(fmt.Sprintf("RUNNER_ENDPOINT=\"%s\"", params.Endpoint))
-	printSensitiveParam("RUNNER_ACCESSKEYID", params.AccessKeyID)
-	printSensitiveParam("RUNNER_SECRETACCESSKEY", params.SecretAccessKey)
-	output.PrintLog(fmt.Sprintf("RUNNER_LOCATION=\"%s\"", params.Location))
-	printSensitiveParam("RUNNER_TOKEN", params.Token)
-	output.PrintLog(fmt.Sprintf("RUNNER_SSL=%t", params.Ssl))
-	output.PrintLog(fmt.Sprintf("RUNNER_SCRAPPERENABLED=\"%t\"", params.ScrapperEnabled))
-	output.PrintLog(fmt.Sprintf("RUNNER_GITUSERNAME=\"%s\"", params.GitUsername))
-	printSensitiveParam("RUNNER_GITTOKEN", params.GitToken)
-	output.PrintLog(fmt.Sprintf("RUNNER_DATADIR=\"%s\"", params.DataDir))
-}
-
-// printSensitiveParam shows in logs if a parameter is set or not
-func printSensitiveParam(name string, value string) {
-	if len(value) == 0 {
-		output.PrintLog(fmt.Sprintf("%s=\"\"", name))
-	} else {
-		output.PrintLog(fmt.Sprintf("%s=\"********\"", name))
-	}
->>>>>>> Stashed changes
 }
