@@ -36,6 +36,7 @@ func NewGinkgoRunner() (*GinkgoRunner, error) {
 			params.SecretAccessKey,
 			params.Location,
 			params.Token,
+			params.Bucket,
 			params.Ssl,
 		),
 		Params: params,
@@ -146,11 +147,11 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		}
 		err := r.Scraper.Scrape(execution.Id, directories)
 		if err != nil {
-			return result.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
+			return *result.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
 		}
 	}
 
-	return result.WithErrors(err, serr), nil
+	return *result.WithErrors(err, serr), nil
 }
 
 func MoveReport(path string, reportsPath string, reportFileName string) error {
