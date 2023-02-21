@@ -14,7 +14,7 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
-	"github.com/kubeshop/testkube/pkg/executor/secret"
+	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/ui"
 )
 
@@ -68,8 +68,8 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// use `execution.Variables` for variables passed from Test/Execution
 	// variables of type "secret" will be automatically decoded
-	envManager := secret.NewEnvManagerWithVars(execution.Variables)
-	envManager.GetVars(envManager.Variables)
+	envManager := env.NewManagerWithVars(execution.Variables)
+	envManager.GetReferenceVars(envManager.Variables)
 	path, err := r.Fetcher.Fetch(execution.Content)
 	if err != nil {
 		return result, err
@@ -104,7 +104,7 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// run executor here
 	out, err := executor.Run(runPath, ginkgoBin, envManager, ginkgoArgsAndFlags...)
-	out = envManager.Obfuscate(out)
+	out = envManager.ObfuscateSecrets(out)
 
 	// generate report/result
 	if ginkgoParams["GinkgoJsonReport"] != "" {
