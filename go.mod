@@ -3,7 +3,7 @@ module github.com/kubeshop/testkube-executor-ginkgo
 go 1.18
 
 require (
-	github.com/kubeshop/testkube v1.9.13-beta001
+	github.com/kubeshop/testkube v1.9.15
 	github.com/stretchr/testify v1.8.1
 )
 
@@ -27,7 +27,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
-	github.com/kubeshop/testkube-operator v1.9.1 // indirect
+	github.com/kubeshop/testkube-operator v1.9.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/minio-go/v7 v7.0.47 // indirect
