@@ -217,6 +217,9 @@ func BuildGinkgoArgs(params map[string]string, path, runPath string) ([]string, 
 
 	args := []string{}
 	for k, p := range params {
+		if p == "" {
+			continue
+		}
 		if k != "GinkgoTestPackage" {
 			args = append(args, strings.Split(p, " ")...)
 		}
