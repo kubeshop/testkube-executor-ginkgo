@@ -267,7 +267,7 @@ func BuildGinkgoPassThroughFlags(execution testkube.Execution) []string {
 	return flags
 }
 
-// Validate checks if Execution has valid data in context of Cypress executor
+// Validate checks if Execution has valid data in context of Ginkgo executor
 func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
 
 	if execution.Content == nil {
@@ -295,6 +295,7 @@ func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
 		output.PrintLog(fmt.Sprintf("%s passing ginkgo test as single file not implemented yet", ui.IconCross))
 		return fmt.Errorf("passing ginkgo test as single file not implemented yet")
 	}
+
 	return nil
 }
 
