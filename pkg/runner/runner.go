@@ -11,10 +11,10 @@ import (
 	"github.com/kubeshop/testkube/pkg/envs"
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
+	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
-	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/ui"
 )
 
@@ -285,7 +285,13 @@ func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
 		return fmt.Errorf("can't find branch or commit in params must use one or the other, repo:%+v", execution.Content.Repository)
 	}
 
-	if execution.Content.IsFile() {
+	contentType, err := r.Fetcher.CalculateGitContentType(*execution.Content.Repository)
+	if err != nil {
+		output.PrintLog(fmt.Sprintf("%s Can't detect git content type: %+v", ui.IconCross, err))
+		return err
+	}
+
+	if contentType != string(testkube.TestContentTypeGitDir) {
 		output.PrintLog(fmt.Sprintf("%s passing ginkgo test as single file not implemented yet", ui.IconCross))
 		return fmt.Errorf("passing ginkgo test as single file not implemented yet")
 	}
