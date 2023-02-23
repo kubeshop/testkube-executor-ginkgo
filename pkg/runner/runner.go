@@ -75,6 +75,16 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return result, err
+	}
+
+	if !fileInfo.IsDir() {
+		output.PrintLog(fmt.Sprintf("%s passing ginkgo test as single file not implemented yet", ui.IconCross))
+		return result, fmt.Errorf("passing ginkgo test as single file not implemented yet")
+	}
+
 	// Set up ginkgo params
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
 
@@ -283,17 +293,6 @@ func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
 	if execution.Content.Repository.Branch == "" && execution.Content.Repository.Commit == "" {
 		output.PrintLog(fmt.Sprintf("%s Can't find branch or commit in params must use one or the other, repo %+v", ui.IconCross, execution.Content.Repository))
 		return fmt.Errorf("can't find branch or commit in params must use one or the other, repo:%+v", execution.Content.Repository)
-	}
-
-	contentType, err := r.Fetcher.CalculateGitContentType(*execution.Content.Repository)
-	if err != nil {
-		output.PrintLog(fmt.Sprintf("%s Can't detect git content type: %+v", ui.IconCross, err))
-		return err
-	}
-
-	if contentType != string(testkube.TestContentTypeGitDir) {
-		output.PrintLog(fmt.Sprintf("%s passing ginkgo test as single file not implemented yet", ui.IconCross))
-		return fmt.Errorf("passing ginkgo test as single file not implemented yet")
 	}
 
 	return nil
