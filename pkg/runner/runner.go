@@ -75,6 +75,16 @@ func (r *GinkgoRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return result, err
+	}
+
+	if !fileInfo.IsDir() {
+		output.PrintLog(fmt.Sprintf("%s passing ginkgo test as single file not implemented yet", ui.IconCross))
+		return result, fmt.Errorf("passing ginkgo test as single file not implemented yet")
+	}
+
 	// Set up ginkgo params
 	ginkgoParams := FindGinkgoParams(&execution, ginkgoDefaultParams)
 
@@ -266,7 +276,7 @@ func BuildGinkgoPassThroughFlags(execution testkube.Execution) []string {
 	return flags
 }
 
-// Validate checks if Execution has valid data in context of Cypress executor
+// Validate checks if Execution has valid data in context of Ginkgo executor
 func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
 
 	if execution.Content == nil {
@@ -284,10 +294,6 @@ func (r *GinkgoRunner) Validate(execution testkube.Execution) error {
 		return fmt.Errorf("can't find branch or commit in params must use one or the other, repo:%+v", execution.Content.Repository)
 	}
 
-	if execution.Content.IsFile() {
-		output.PrintLog(fmt.Sprintf("%s passing ginkgo test as single file not implemented yet", ui.IconCross))
-		return fmt.Errorf("passing ginkgo test as single file not implemented yet")
-	}
 	return nil
 }
 
