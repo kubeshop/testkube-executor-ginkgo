@@ -29,7 +29,7 @@ func NewGinkgoRunner() (*GinkgoRunner, error) {
 	}
 
 	runner := &GinkgoRunner{
-		Fetcher: content.NewFetcher(""),
+		Fetcher: content.NewFetcher(params.DataDir),
 		Scraper: scraper.NewMinioScraper(
 			params.Endpoint,
 			params.AccessKeyID,
