@@ -1,6 +1,6 @@
 # DEPRECATED
 
-This repository no longer supported, please consider using [Testkube](https://github.com/kubeshop/testkube) instead.
+This repository is no longer supported, please consider using [Testkube](https://github.com/kubeshop/testkube) instead.
 
 ![Testkube Logo](https://raw.githubusercontent.com/kubeshop/testkube/main/assets/testkube-color-gray.png)
                                                            
